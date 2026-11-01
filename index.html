@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Word Blade 字刃勇者</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="英文打字冒險遊戲：打出怪物頭上的單字，勇者就會揮劍斬敵、一路闖關打魔王。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=Silkscreen:wght@400;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game" aria-label="遊戲畫面"></canvas>
+  <input id="kb" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" lang="en" aria-label="打字輸入">
+
+  <header id="hud" hidden>
+    <div class="hud-group">
+      <div id="hp" class="hearts" aria-label="生命值"></div>
+      <div class="stage-info">
+        <div id="stageName" class="stage-name">晨光森林</div>
+        <div class="prog"><div id="progFill" class="prog-fill"></div></div>
+      </div>
+    </div>
+    <div class="hud-group stats">
+      <div class="stat"><span class="stat-k">SCORE</span><span id="score" class="stat-v">0</span></div>
+      <div class="stat"><span class="stat-k">COMBO</span><span id="combo" class="stat-v">0</span></div>
+      <div class="stat"><span class="stat-k">WPM</span><span id="wpm" class="stat-v">0</span></div>
+      <div class="stat"><span class="stat-k">ACC</span><span id="acc" class="stat-v">100%</span></div>
+      <button id="btnSound2" class="icon-btn" type="button" aria-label="切換音效">♪</button>
+      <button id="btnPause" class="icon-btn" type="button" aria-label="暫停">❚❚</button>
+    </div>
+  </header>
+
+  <div id="bossbar" hidden>
+    <div id="bossName" class="boss-name">BOSS</div>
+    <div id="bossPips" class="boss-pips"></div>
+  </div>
+
+  <div id="banner" hidden>
+    <div id="bEyebrow" class="b-eyebrow"></div>
+    <div id="bTitle" class="b-title"></div>
+    <div id="bSub" class="b-sub"></div>
+  </div>
+
+  <div id="toast" role="status" hidden></div>
+  <button id="tapHint" type="button" hidden>點這裡叫出鍵盤</button>
+
+  <!-- 主選單 -->
+  <section id="menu" class="overlay">
+    <div class="panel menu-panel">
+      <div class="logo">
+        <div class="logo-en">WORD<span>BLADE</span></div>
+        <div class="logo-zh">字刃勇者</div>
+        <p class="tagline">打出怪物頭上的英文單字，勇者就會揮劍斬敵。</p>
+      </div>
+
+      <div class="field">
+        <div class="field-k">模式</div>
+        <div class="seg" id="modeSeg" role="radiogroup">
+          <button type="button" data-mode="adventure" role="radio"><b>冒險模式</b><small>五個關卡・各有魔王</small></button>
+          <button type="button" data-mode="endless" role="radio"><b>無盡模式</b><small>一波接一波・拼最高分</small></button>
+        </div>
+      </div>
+
+      <div class="field" id="stageField">
+        <div class="field-k">起始關卡</div>
+        <div class="chips" id="stageChips"></div>
+      </div>
+
+      <div class="field">
+        <div class="field-k">難度</div>
+        <div class="seg seg-3" id="diffSeg" role="radiogroup">
+          <button type="button" data-diff="easy" role="radio"><b>簡單</b><small>約 20 WPM</small></button>
+          <button type="button" data-diff="normal" role="radio"><b>普通</b><small>約 35 WPM</small></button>
+          <button type="button" data-diff="hard" role="radio"><b>困難</b><small>50+ WPM</small></button>
+        </div>
+      </div>
+
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="optMeaning"><span>顯示中文字義</span></label>
+        <label class="toggle"><input type="checkbox" id="optSound"><span>音效</span></label>
+      </div>
+
+      <button id="btnStart" class="btn-primary" type="button">開始冒險 <kbd>Enter</kbd></button>
+      <div id="bestLine" class="best-line"></div>
+
+      <ul class="howto">
+        <li><kbd>A–Z</kbd> 打出怪物頭上的字，第一個字母決定鎖定誰</li>
+        <li><kbd>Backspace</kbd> 放棄目前目標　<kbd>Esc</kbd> 暫停</li>
+        <li>金色光環的怪物有獎勵：<span class="c-heal">♥ 補血</span>　<span class="c-frost">❄ 冰凍</span>　<span class="c-bomb">✸ 炸彈</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 暫停 -->
+  <section id="pause" class="overlay" hidden>
+    <div class="panel small-panel">
+      <div class="res-eyebrow">PAUSED</div>
+      <h2 class="res-title">休息一下</h2>
+      <div class="btn-row">
+        <button id="btnResume" class="btn-primary" type="button">繼續 <kbd>Esc</kbd></button>
+        <button id="btnRestart" class="btn-ghost" type="button">重新開始</button>
+        <button id="btnQuit" class="btn-ghost" type="button">回主選單</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 結算 -->
+  <section id="result" class="overlay" hidden>
+    <div class="panel small-panel">
+      <div id="resEyebrow" class="res-eyebrow"></div>
+      <h2 id="resTitle" class="res-title"></h2>
+      <div id="resStars" class="stars"></div>
+      <div id="resBadges" class="badges"></div>
+      <dl class="res-grid">
+        <div><dt>分數</dt><dd id="rScore">0</dd></div>
+        <div><dt>WPM</dt><dd id="rWpm">0</dd></div>
+        <div><dt>正確率</dt><dd id="rAcc">0%</dd></div>
+        <div><dt>最大連擊</dt><dd id="rCombo">0</dd></div>
+        <div><dt>擊倒</dt><dd id="rWords">0</dd></div>
+        <div><dt>最高分</dt><dd id="rBest">0</dd></div>
+      </dl>
+      <div id="resWeak" class="weak"></div>
+      <div class="btn-row">
+        <button id="btnNext" class="btn-primary" type="button">下一關 <kbd>Enter</kbd></button>
+        <button id="btnAgain" class="btn-ghost" type="button">再玩一次</button>
+        <button id="btnMenu" class="btn-ghost" type="button">回主選單</button>
+      </div>
+    </div>
+  </section>
+</div>
+<script src="js/words.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
